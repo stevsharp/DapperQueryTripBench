@@ -73,3 +73,86 @@ CREATE TABLE Payments (
     PaymentMethod NVARCHAR(50) NOT NULL,
     FOREIGN KEY (OrderId) REFERENCES Orders(OrderId)
 );
+```
+2. Seed with fake data
+
+```sql
+SET NOCOUNT ON;
+DECLARE @i INT = 1;
+WHILE @i <= 10000
+BEGIN
+    INSERT INTO Orders (OrderDate, CustomerName)
+    VALUES (DATEADD(DAY, -@i % 365, GETDATE()), CONCAT('Customer ', @i));
+
+    DECLARE @orderId INT = SCOPE_IDENTITY();
+
+    DECLARE @j INT = 1;
+    WHILE @j <= 3 + (@i % 3)
+    BEGIN
+        INSERT INTO OrderItems (OrderId, ProductName, Quantity, UnitPrice)
+        VALUES (@orderId, CONCAT('Product ', @j), ABS(CHECKSUM(NEWID()) % 5) + 1, (ABS(CHECKSUM(NEWID()) % 100) + 1));
+        SET @j += 1;
+    END
+
+    INSERT INTO ShippingDetails (OrderId, Address, City, PostalCode, Country)
+    VALUES (@orderId, CONCAT('Address ', @i), 'CityX', '12345', 'CountryY');
+
+    DECLARE @k INT = 1;
+    WHILE @k <= 1 + (@i % 2)
+    BEGIN
+        INSERT INTO Payments (OrderId, PaymentDate, Amount, PaymentMethod)
+        VALUES (@orderId, DATEADD(DAY, -@k, GETDATE()), (ABS(CHECKSUM(NEWID()) % 200) + 20), 'Credit Card');
+        SET @k += 1;
+    END
+
+    SET @i += 1;
+END
+```
+Running the Benchmark
+1. Clone this repo
+
+bash
+```
+git clone https://github.com/yourusername/DbRoundtripBenchmark.git
+cd DbRoundtripBenchmark
+```
+2. Install dependencies
+
+bash
+```
+dotnet add package BenchmarkDotNet
+dotnet add package Dapper
+dotnet add package Microsoft.Data.SqlClient
+```
+3. Configure your connection string
+Set it in an environment variable:
+
+powershell
+```
+$env:DB_CONN="Server=.;Database=YourDbName;Trusted_Connection=True;TrustServerCertificate=True;"
+Or hardcode it in BenchConfig.cs / Program.cs.
+```
+4. Build and run in Release mode
+
+bash
+```
+dotnet run -c Release
+Sample Output
+
+| Method                                                   | Mean     | Allocated |
+|----------------------------------------------------------|----------|-----------|
+| Multiple Async Calls Sequential (4 trips)                | 3.021 ms | 24.77 KB  |
+| Multiple Async Calls Parallel (4 trips, Task.WhenAll)    | 1.568 ms | 28.08 KB  |
+| QueryMultiple (1 trip)                                   | 2.466 ms | 12.59 KB  |
+| JOIN (1 trip, server-shaped)                             | 2.468 ms | 14.02 KB  |
+```
+Interpretation
+
+Sequential (4 trips): slowest, latency stacks per roundtrip
+
+Parallel (4 trips): faster locally, but increases pool pressure and memory usage
+
+QueryMultiple (1 trip): great balance — avoids pool pressure, keeps latency low
+
+JOIN (1 trip): can be fastest for small child sets, but risks fan-out duplicates
+
