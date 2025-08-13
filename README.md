@@ -1,5 +1,9 @@
 # DbRoundtripBenchmark
 
+## Connect with Me
+
+[![LinkedIn](https://img.shields.io/badge/LinkedIn-Profile-blue)](https://www.linkedin.com/in/spyros-ponaris-913a6937/)
+
 A **BenchmarkDotNet** project comparing different ways of fetching related data from SQL Server using **Dapper**:
 
 - Multiple sequential queries (4 trips)
@@ -156,3 +160,6 @@ QueryMultiple (1 trip): great balance — avoids pool pressure, keeps latency lo
 
 JOIN (1 trip): can be fastest for small child sets, but risks fan-out duplicates
 
+## Connect with Me
+
+[![LinkedIn](https://img.shields.io/badge/LinkedIn-Profile-blue)](https://www.linkedin.com/in/spyros-ponaris-913a6937/)
